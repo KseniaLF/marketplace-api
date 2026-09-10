@@ -1,0 +1,24 @@
+{
+  "name": "marketplace-api",
+  "version": "1.0.0",
+  "description": "Marketplace API is a backend service for buyers and independent sellers. Buyers can browse products and place orders, while sellers can publish products, manage their availability, and process received orders.",
+  "main": "index.js",
+  "scripts": {
+    "lint:openapi": "redocly lint openapi/openapi.yaml",
+    "bundle:openapi": "redocly bundle openapi/openapi.yaml -o spec.json",
+    "test": "npm run lint:openapi"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KseniaLF/marketplace-api.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/KseniaLF/marketplace-api/issues"
+  },
+  "homepage": "https://github.com/KseniaLF/marketplace-api#readme",
+  "devDependencies": {
+    "@redocly/cli": "^2.46.0"
+  }
+}

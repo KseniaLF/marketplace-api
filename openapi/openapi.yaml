@@ -1,0 +1,145 @@
+openapi: 3.0.3
+
+info:
+  title: Marketplace API
+  version: 1.0.0
+  description: API for buyers and independent marketplace sellers.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+security: []
+
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      summary: List products
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of products to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          description: An opaque pagination token returned by the previous page.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A paginated list of available products.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  next_cursor:
+                    type: string
+                    nullable: true
+                    description: Cursor for the next page, or null when no more pages exist.
+        "400":
+          description: Invalid pagination parameters.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /products/{productId}:
+    get:
+      operationId: getProduct
+      summary: Get product details
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Unique product identifier.
+          schema:
+            type: string
+
+      responses:
+        "200":
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+        "404":
+          description: Product not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  schemas:
+    Product:
+      type: object
+      required:
+        - id
+        - seller_id
+        - name
+        - price_cents
+        - currency
+        - stock
+        - image_urls
+      properties:
+        id:
+          type: string
+        seller_id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        price_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [EUR]
+        stock:
+          type: integer
+          minimum: 0
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        description:
+          type: string
+
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
