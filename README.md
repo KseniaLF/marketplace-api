@@ -92,3 +92,54 @@ Order         1 ─── 1 Shipment
   adapters.
 - Advanced marketplace features such as recommendations, advertising, loyalty
   programmes, and international taxation are outside the course scope.
+
+## 5. OpenAPI contract validation
+
+This project uses **Option B — runtime validation**. The Express application uses
+`express-openapi-validator` to validate HTTP requests and responses against
+`openapi/openapi.yaml`.
+
+### Installation and startup
+
+```bash
+npm install
+npm start
+```
+
+The server starts at `http://localhost:3000`.
+
+### OpenAPI checks
+
+```bash
+npm run lint:openapi
+npm run bundle:openapi
+```
+
+### Runtime validation checks
+
+A valid order request returns `201 Created`:
+
+```bash
+curl -i -X POST http://localhost:3000/orders \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-demo-1" \
+  -d '{"buyer_id":"buyer-1","delivery_address":"Amsterdam","items":[{"product_id":"product-1","quantity":2}]}'
+```
+
+A request without `Idempotency-Key` returns `400 Bad Request` with
+`Content-Type: application/problem+json`:
+
+```bash
+curl -i -X POST http://localhost:3000/orders \
+  -H "Content-Type: application/json" \
+  -d '{"buyer_id":"buyer-1","delivery_address":"Amsterdam","items":[{"product_id":"product-1","quantity":2}]}'
+```
+
+An empty `items` array also returns `400 Bad Request`:
+
+```bash
+curl -i -X POST http://localhost:3000/orders \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: empty-items-1" \
+  -d '{"buyer_id":"buyer-1","delivery_address":"Amsterdam","items":[]}'
+```

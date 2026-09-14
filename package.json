@@ -6,7 +6,9 @@
   "scripts": {
     "lint:openapi": "redocly lint openapi/openapi.yaml",
     "bundle:openapi": "redocly bundle openapi/openapi.yaml -o spec.json",
-    "test": "npm run lint:openapi"
+    "test": "npm run lint:openapi",
+    "start": "node app.js",
+    "dev": "node --watch app.js"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,9 @@
   "homepage": "https://github.com/KseniaLF/marketplace-api#readme",
   "devDependencies": {
     "@redocly/cli": "^2.46.0"
+  },
+  "dependencies": {
+    "express": "^4.22.2",
+    "express-openapi-validator": "^5.6.2"
   }
 }
