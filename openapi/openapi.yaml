@@ -1,0 +1,377 @@
+openapi: 3.0.3
+
+info:
+  title: Marketplace API
+  version: 1.0.0
+  description: API for buyers and independent marketplace sellers.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+security: []
+
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      summary: List products
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of products to return.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          description: An opaque pagination token returned by the previous page.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A paginated list of available products.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - next_cursor
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  next_cursor:
+                    type: string
+                    nullable: true
+                    description: Cursor for the next page, or null when no more pages exist.
+        "400":
+          description: Invalid pagination parameters.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        description: Unique product identifier.
+        schema:
+          type: string
+    get:
+      operationId: getProduct
+      summary: Get product details
+
+      responses:
+        "200":
+          description: Product details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+        "404":
+          description: Product not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+    patch:
+      operationId: updateProduct
+      summary: Update product details.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+
+      responses:
+        "200":
+          description: Updated product.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          description: Invalid body.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Product not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Create an order
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Repeating the same key with the same request body returns the original response without creating another order.
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Invalid order request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Insufficient stock or products from different sellers.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "422":
+          description: Idempotency key was already used with a different request body.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        description: Unique order identifier.
+        schema:
+          type: string
+    get:
+      operationId: getOrder
+      summary: Get order details
+      responses:
+        "200":
+          description: Order details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  schemas:
+    Product:
+      type: object
+      required:
+        - id
+        - seller_id
+        - name
+        - price_cents
+        - currency
+        - stock
+        - image_urls
+      properties:
+        id:
+          type: string
+        seller_id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        price_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [EUR]
+        stock:
+          type: integer
+          minimum: 0
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        description:
+          type: string
+
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+
+    UpdateProductRequest:
+      type: object
+      minProperties: 1
+
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        price_cents:
+          type: integer
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        image_urls:
+          type: array
+          items:
+            type: string
+            format: uri
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - buyer_id
+        - delivery_address
+        - items
+      properties:
+        buyer_id:
+          type: string
+        delivery_address:
+          type: string
+          minLength: 1
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - product_id
+              - quantity
+            properties:
+              product_id:
+                type: string
+              quantity:
+                type: integer
+                minimum: 1
+
+    OrderItem:
+      type: object
+      required:
+        - product_id
+        - product_name
+        - quantity
+        - unit_price_cents
+      properties:
+        product_id:
+          type: string
+        product_name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price_cents:
+          type: integer
+          minimum: 0
+
+    Order:
+      type: object
+      required:
+        - id
+        - buyer_id
+        - seller_id
+        - status
+        - payment_status
+        - shipment_status
+        - delivery_address
+        - items
+        - total_cents
+        - currency
+        - created_at
+      properties:
+        id:
+          type: string
+        buyer_id:
+          type: string
+        seller_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending_payment
+            - paid
+            - preparing
+            - shipped
+            - delivered
+            - cancelled
+        payment_status:
+          type: string
+          enum:
+            - pending
+            - succeeded
+            - failed
+            - refunded
+        shipment_status:
+          type: string
+          enum:
+            - not_started
+            - preparing
+            - shipped
+            - delivered
+            - delivery_failed
+            - cancelled
+        delivery_address:
+          type: string
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        total_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          enum: [EUR]
+        created_at:
+          type: string
+          format: date-time
