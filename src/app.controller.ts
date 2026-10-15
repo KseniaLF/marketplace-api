@@ -1,19 +1,17 @@
-import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Headers,
+  BadRequestException,
+} from "@nestjs/common";
+import { CreateOrderDto } from "./orders/dto/create-order.dto";
 
 type Health = {
   status: string;
   uptimeSec: number;
-};
-
-type OrderItems = Array<{
-  product_id: string;
-  quantity: number;
-}>;
-
-type CreateOrderBody = {
-  buyer_id: string;
-  delivery_address: string;
-  items: OrderItems;
 };
 
 @Controller()
@@ -48,7 +46,14 @@ export class AppController {
 
   @Post("orders")
   @HttpCode(201)
-  orders(@Body() body: CreateOrderBody) {
+  orders(
+    @Body() body: CreateOrderDto,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
+    if (!idempotencyKey?.trim()) {
+      throw new BadRequestException("Idempotency-Key header is required");
+    }
+
     const { buyer_id, delivery_address, items: orderItems } = body;
 
     let total_cents = 0;

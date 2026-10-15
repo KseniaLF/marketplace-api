@@ -5,16 +5,17 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { ConfigService } from "@nestjs/config";
 import { Env } from "./config/env.schema.js";
-import OpenApiValidator from "express-openapi-validator";
+
+import { ValidationPipe } from "@nestjs/common";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(
-    OpenApiValidator.middleware({
-      apiSpec: path.join(process.cwd(), "openapi/openapi.yaml"),
-      validateRequests: true,
-      validateResponses: true,
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
