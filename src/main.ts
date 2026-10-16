@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import path from "node:path";
 
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
