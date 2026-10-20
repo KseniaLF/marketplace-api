@@ -93,29 +93,28 @@ Order         1 ─── 1 Shipment
 - Advanced marketplace features such as recommendations, advertising, loyalty
   programmes, and international taxation are outside the course scope.
 
-## 5. OpenAPI contract validation
+## 5. API contract and request validation
 
-This project uses **Option B — runtime validation**. The Express application uses
-`express-openapi-validator` to validate HTTP requests and responses against
-`openapi/openapi.yaml`.
+The application is implemented with NestJS.
 
-### Installation and startup
-
-```bash
-npm install
-npm start
-```
-
-The server starts at `http://localhost:3000`.
-
-### OpenAPI checks
+The OpenAPI document is stored in `openapi/openapi.yaml` and validated statically with Redocly:
 
 ```bash
 npm run lint:openapi
 npm run bundle:openapi
 ```
 
-### Runtime validation checks
+Incoming request bodies are validated at runtime using NestJS `ValidationPipe`, `class-validator`, and DTO classes.
+
+The global validation pipe:
+
+- rejects unknown properties;
+- validates required fields and their types;
+- validates nested order items;
+- requires at least one order item;
+- transforms incoming objects into DTO instances.
+
+The required `Idempotency-Key` header is validated separately by the orders controller.
 
 A valid order request returns `201 Created`:
 
@@ -126,8 +125,7 @@ curl -i -X POST http://localhost:3000/orders \
   -d '{"buyer_id":"buyer-1","delivery_address":"Amsterdam","items":[{"product_id":"product-1","quantity":2}]}'
 ```
 
-A request without `Idempotency-Key` returns `400 Bad Request` with
-`Content-Type: application/problem+json`:
+A request without `Idempotency-Key` returns `400 Bad Request`:
 
 ```bash
 curl -i -X POST http://localhost:3000/orders \
@@ -142,4 +140,144 @@ curl -i -X POST http://localhost:3000/orders \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: empty-items-1" \
   -d '{"buyer_id":"buyer-1","delivery_address":"Amsterdam","items":[]}'
+```
+
+## Configuration
+
+The application validates its environment variables during startup using Zod. If a required variable is missing or invalid, the application fails fast before accepting requests.
+
+| Variable           | Required | Default               | Description                                                        |
+| ------------------ | -------- | --------------------- | ------------------------------------------------------------------ |
+| `PORT`             | No       | `3000`                | HTTP port used by the API. Must be an integer between 1 and 65535. |
+| `DB_URL`           | Yes      | —                     | PostgreSQL connection URL without a password.                      |
+| `DB_PASSWORD_FILE` | No       | `secrets/db_password` | Path to the file containing the PostgreSQL password.               |
+| `LOG_LEVEL`        | No       | `info`                | Application log level: `debug`, `info`, `warn`, or `error`.        |
+
+The database password must not be included in `DB_URL`. It is stored in a separate file so the running application can read an updated password when the connection pool creates a new database connection.
+
+Create the local environment file:
+
+```bash
+cp .env.example .env
+```
+
+Create the password file before the first PostgreSQL startup:
+
+```bash
+mkdir -p secrets
+printf '%s' 'change-me-locally' > secrets/db_password
+```
+
+The `.env` file and the contents of `secrets/` are excluded from Git and the Docker build context. Never commit real credentials.
+
+> Changing the password file after PostgreSQL has initialized its data volume does not change the database role password automatically. Use `rotate.sh` for password rotation.
+
+## Running with Docker Compose
+
+Build and start the API and PostgreSQL:
+
+```bash
+docker compose up -d --build
+```
+
+Check the container status:
+
+```bash
+docker compose ps
+```
+
+The services use the following addresses:
+
+- API from the host: `http://localhost:3000`;
+- PostgreSQL from the host: `localhost:21110`;
+- PostgreSQL from the API container: `db:5432`.
+
+Inside the Compose network, `db` is resolved through Docker DNS to the PostgreSQL container. `localhost` inside the API container would refer to the API container itself.
+
+Check the API:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Check the database connection:
+
+```bash
+curl http://localhost:3000/db
+```
+
+A successful response contains the PostgreSQL role and the current database time:
+
+```json
+{
+  "current_user": "app_user",
+  "now": "2026-10-20 09:06:47.467123+00"
+}
+```
+
+Stop the services:
+
+```bash
+docker compose down
+```
+
+To remove the PostgreSQL data volume as well:
+
+```bash
+docker compose down -v
+```
+
+Warning: removing the volume permanently deletes the local database data.
+
+## Database Password Rotation
+
+The PostgreSQL password can be rotated without restarting the API:
+
+```bash
+./rotate.sh
+```
+
+If the script is not executable yet:
+
+```bash
+chmod +x rotate.sh
+```
+
+The rotation script:
+
+1. generates a new random password;
+2. changes the password of the PostgreSQL `app_user` role;
+3. writes the same password to `secrets/db_password`;
+4. terminates old `app_user` database connections.
+
+The NestJS process keeps one long-lived `pg.Pool`. The pool uses a password callback that reads `DB_PASSWORD_FILE` whenever it creates a new physical connection. Existing connections do not need to authenticate again, while new connections use the updated password.
+
+Verify that the API still works after rotation:
+
+```bash
+curl http://localhost:3000/db
+curl http://localhost:3000/health
+docker compose ps
+```
+
+The API uptime and container creation time should continue increasing, proving that password rotation did not restart the application.
+
+## Validation
+
+Run the TypeScript check:
+
+```bash
+npm run typecheck
+```
+
+Verify that `.env.example` contains the same variable names as the Zod schema:
+
+```bash
+npm run check:env
+```
+
+Validate the OpenAPI document:
+
+```bash
+npm test
 ```

@@ -7,8 +7,11 @@
     "lint:openapi": "redocly lint openapi/openapi.yaml",
     "bundle:openapi": "redocly bundle openapi/openapi.yaml -o spec.json",
     "test": "npm run lint:openapi",
-    "start": "node app.js",
-    "dev": "node --watch app.js"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && node dist/main.js",
+    "start:dev": "nest start --watch",
+    "check:env": "npm run build --silent && node scripts/check-env-example.mjs"
   },
   "repository": {
     "type": "git",
@@ -21,10 +24,24 @@
   },
   "homepage": "https://github.com/KseniaLF/marketplace-api#readme",
   "devDependencies": {
-    "@redocly/cli": "^2.46.0"
+    "@nestjs/cli": "^11.0.24",
+    "@redocly/cli": "^2.46.0",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
-    "express": "^4.22.2",
-    "express-openapi-validator": "^5.6.2"
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^18.0.8",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.5"
   }
 }
