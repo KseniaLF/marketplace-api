@@ -1,6 +1,6 @@
 FROM node:24-alpine AS builder
 
-WORKDIR /src/main
+WORKDIR /app
 
 COPY package*.json ./
 
@@ -13,14 +13,13 @@ RUN npm run build
 
 FROM node:24-alpine AS production
 
-WORKDIR /src/main
+WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-ENV NODE_ENV=production
-
-COPY --from=builder --chown=node:node /src/main/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --chown=node:node .env.example ./.env.example
 
 USER node
 
