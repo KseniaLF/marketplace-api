@@ -1,0 +1,26 @@
+name: marketplace
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "21110:5432"
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: marketplace
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d marketplace"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+secrets:
+  db_password:
+    file: ./secrets/db_password
+
+volumes:
+  postgres_data:

@@ -8,6 +8,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { CreateOrderDto } from "./orders/dto/create-order.dto";
+import { DatabaseService } from "./database/database.service";
 
 type Health = {
   status: string;
@@ -16,12 +17,23 @@ type Health = {
 
 @Controller()
 export class AppController {
+  constructor(private readonly database: DatabaseService) {}
+
   @Get("health")
   health(): Health {
     return {
       status: "ok",
       uptimeSec: Math.round(process.uptime()),
     };
+  }
+
+  @Get("db")
+  async dbHealth() {
+    const result = await this.database.query(
+      "SELECT current_user, now()::text AS now",
+    );
+
+    return result.rows[0];
   }
 
   @Get("products")
